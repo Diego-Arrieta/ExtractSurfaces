@@ -30,11 +30,14 @@ namespace CivilAPI
             editor.WriteMessage("Extracting surfaces...\n");
 
             // Ensure the output directory exists
-            string outputDirectory = "D:\\Surfaces";
-            if (!Directory.Exists(outputDirectory))
+            string directoryPath = "D:\\Surfaces";
+            if (!Directory.Exists(directoryPath))
             {
-                Directory.CreateDirectory(outputDirectory);
+                Directory.CreateDirectory(directoryPath);
             }
+
+            // Ensure the output directory exists
+            string templatePath = "C:\\Users\\UROGGIO\\AppData\\Local\\Autodesk\\C3D 2024\\enu\\Template\\_Autodesk Civil 3D (Metric) NCS.dwt";
 
             database.Run(tr =>
             {
@@ -49,6 +52,22 @@ namespace CivilAPI
                     List<Point2d> points = polyline.GetPoints();
                     editor.WriteMessage($"Polyline Points: {points.Count}\n");
                     Point2dCollection point2dCol = new Point2dCollection(points.ToArray());
+
+                    // Generate file name
+                    string fileName = $"{surface.Name}_{polyline.Handle.Value}.dwg";
+
+                    Database exDatabase = ExternalDocument.CreateAndLoad(directoryPath, fileName, templatePath, true);
+
+                    exDatabase.Run(exTr =>
+                    {
+                        HostApplicationServices.WorkingDatabase = exDatabase;
+                        ObjectId newSurfaceId = TinSurface.CreateByCropping(exDatabase, $"surface_{polyline.Handle.Value}", surface.ObjectId, point2dCol);
+                        TinSurface newSurface = exTr.GetObject(newSurfaceId, OpenMode.ForWrite) as TinSurface;
+                    });
+                    HostApplicationServices.WorkingDatabase = database;
+
+                    exDatabase.SaveAs(directoryPath + "\\" + fileName, DwgVersion.Current);
+                    break;
                 }
 
             });

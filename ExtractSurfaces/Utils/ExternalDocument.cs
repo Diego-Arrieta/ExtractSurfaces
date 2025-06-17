@@ -15,6 +15,24 @@ namespace CivilAPI.Extensions
 {
     public static class ExternalDocument
     {
+        public static void Create(string directoryPath, string fileName, string templateFilePath, bool overwrite = false)
+        {
+            FileCreationChecks(directoryPath, fileName, templateFilePath, overwrite);
+
+            try
+            {
+                var filePath = directoryPath + "\\" + fileName;
+
+                // Using false here for buildDefaultDrawing because we are reading from a template file.
+                using (var db = new Database(false, true))
+                {
+                    db.ReadDwgFile(templateFilePath, FileShare.Read, true, null);
+                    db.SaveAs(filePath, DwgVersion.Current);
+                }
+            }
+            catch { throw; }
+        }
+
         public static Database LoadFromFile(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -52,7 +70,7 @@ namespace CivilAPI.Extensions
                 var filePath = directoryPath + "\\" + fileName;
 
                 // Using false here for buildDefaultDrawing because we are reading from a template file.
-                using (var db = new Database(false, true))
+                using (Database db = new Database(false, true))
                 {
                     db.ReadDwgFile(templateFilePath, FileShare.Read, true, null);
                     db.SaveAs(filePath, DwgVersion.Current);
@@ -60,6 +78,18 @@ namespace CivilAPI.Extensions
                 return LoadFromFile(filePath);
             }
             catch { throw; }
+        }
+        public static void Save(this Database database)
+        {
+            try
+            {
+                database.SaveAs("temp", DwgVersion.Current);
+                return;
+            }
+            catch
+            {
+                throw new InvalidOperationException("The file is currently in use by another application and cannot be saved.");
+            }
         }
         private static bool HasValidExtension(string fileName)
         {
