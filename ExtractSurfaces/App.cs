@@ -61,17 +61,12 @@ namespace CivilAPI
                     exDatabase.Run(exTr =>
                     {
                         HostApplicationServices.WorkingDatabase = exDatabase;
-                        ObjectId newSurfaceId = TinSurface.CreateByCropping(exDatabase, $"surface_{polyline.Handle.Value}", surface.ObjectId, point2dCol);
-                        TinSurface newSurface = exTr.GetObject(newSurfaceId, OpenMode.ForWrite) as TinSurface;
+                        TinSurface.CreateByCropping(exDatabase, $"surface_{polyline.Handle.Value}", surface.ObjectId, point2dCol);
                     });
                     HostApplicationServices.WorkingDatabase = database;
-
                     exDatabase.SaveAs(directoryPath + "\\" + fileName, DwgVersion.Current);
-                    break;
                 }
-
             });
-
         }
     }
 }
