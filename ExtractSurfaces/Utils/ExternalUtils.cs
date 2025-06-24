@@ -13,7 +13,7 @@ using Autodesk.Civil.DatabaseServices;
 
 namespace CivilAPI.Extensions
 {
-    public static class ExternalDocument
+    public static class ExternalUtils
     {
         public static void Create(string directoryPath, string fileName, string templateFilePath, bool overwrite = false)
         {
@@ -24,7 +24,7 @@ namespace CivilAPI.Extensions
                 var filePath = directoryPath + "\\" + fileName;
 
                 // Using false here for buildDefaultDrawing because we are reading from a template file.
-                using (var db = new Database(false, true))
+                using (Database db = new Database(false, true))
                 {
                     db.ReadDwgFile(templateFilePath, FileShare.Read, true, null);
                     db.SaveAs(filePath, DwgVersion.Current);

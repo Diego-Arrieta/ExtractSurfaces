@@ -63,11 +63,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App.cs" />
+    <Compile Include="Class\MyXmlClass.cs" />
     <Compile Include="Extensions\DatabaseExtensions.cs" />
     <Compile Include="Extensions\EditorExtensions.cs" />
-    <Compile Include="Utils\ExternalDocument.cs" />
+    <Compile Include="Utils\DebugUtils.cs" />
+    <Compile Include="Utils\ExternalUtils.cs" />
     <Compile Include="Extensions\PolylineExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
