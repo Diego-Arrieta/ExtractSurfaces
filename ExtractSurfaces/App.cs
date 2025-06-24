@@ -15,13 +15,16 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.Geometry;
 using Entity = Autodesk.AutoCAD.DatabaseServices.Entity;
 using CivilAPI.Extensions;
+using ExtractSurfaces.Extensions;
+using System.Reflection;
+using Autodesk.Aec.Modeler;
 
 namespace CivilAPI
 {
     public class App
     {
-        [CommandMethod("ExtractSurfaces")]
-        public void ExtractSurfaces()
+        [CommandMethod("ExtractTINSurfacesToDWG")]
+        public void ExtractTINSurfacesToDWG()
         {
             Document document = Application.DocumentManager.MdiActiveDocument;
             Database database = document.Database;
@@ -37,7 +40,8 @@ namespace CivilAPI
             }
 
             // Ensure the output directory exists
-            string templatePath = "C:\\Users\\UROGGIO\\AppData\\Local\\Autodesk\\C3D 2024\\enu\\Template\\_Autodesk Civil 3D (Metric) NCS.dwt";
+            string user = "UROGGIO";
+            string templatePath = $"C:\\Users\\{user}\\AppData\\Local\\Autodesk\\C3D 2024\\enu\\Template\\_Autodesk Civil 3D (Metric) NCS.dwt";
 
             database.Run(tr =>
             {
@@ -47,7 +51,7 @@ namespace CivilAPI
                 List<Entity> polylines = editor.PickEntitiesOfType(tr, true, "LWPOLYLINE", "Select polylines: ");
                 editor.WriteMessage($"Polylines: {polylines.Count}\n");
 
-                foreach (Polyline polyline in polylines) 
+                foreach (Polyline polyline in polylines)
                 {
                     List<Point2d> points = polyline.GetPoints();
                     editor.WriteMessage($"Polyline Points: {points.Count}\n");
@@ -56,7 +60,7 @@ namespace CivilAPI
                     // Generate file name
                     string fileName = $"{surface.Name}_{polyline.Handle.Value}.dwg";
 
-                    Database exDatabase = ExternalDocument.CreateAndLoad(directoryPath, fileName, templatePath, true);
+                    Database exDatabase = ExternalUtils.CreateAndLoad(directoryPath, fileName, templatePath, true);
 
                     exDatabase.Run(exTr =>
                     {
@@ -67,6 +71,101 @@ namespace CivilAPI
                     exDatabase.SaveAs(directoryPath + "\\" + fileName, DwgVersion.Current);
                 }
             });
+        }
+        
+        [CommandMethod("ExtractTINSurfacesToXML")]
+        public void ExtractTINSurfacesToXML()
+        {
+            Document document = Application.DocumentManager.MdiActiveDocument;
+            Database database = document.Database;
+            Editor editor = document.Editor;
+
+            editor.WriteMessage("Extracting surfaces...\n");
+
+            // Ensure the output directory exists
+            string directoryPath = "D:\\Surfaces";
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // Select objects
+            ObjectId surfaceId = editor.PickObjectOfType("AECC_TIN_SURFACE", "Select surface: ");
+            List<ObjectId> polylineIds = editor.PickObjectsOfType("LWPOLYLINE", "Select polylines: ");
+
+            List<Point2dCollection> point2dCols = new List<Point2dCollection>();
+            using (Transaction tr = database.TransactionManager.StartTransaction())
+            {
+                foreach (ObjectId polylineId in polylineIds)
+                {
+                    Polyline polyline = (Polyline)tr.GetObject(polylineId, OpenMode.ForRead);
+                    List<Point2d> points = polyline.GetPoints();
+                    Point2dCollection point2dCol = new Point2dCollection(points.ToArray());
+                    point2dCols.Add(point2dCol);
+
+                    using (Transaction tr2 = database.TransactionManager.StartTransaction())
+                    {
+                        TinSurface surface = (TinSurface)tr2.GetObject(surfaceId, OpenMode.ForRead);
+                        surface.BoundariesDefinition.AddBoundaries(point2dCol, 0.001, Autodesk.Civil.SurfaceBoundaryType.Outer, true);
+
+                        string fileName = $"{surface.Name}_{polyline.Handle.Value}.xml";
+                        string filePath = directoryPath + Path.DirectorySeparatorChar + fileName;
+
+                        editor.WriteMessage(filePath + "\n");
+                        myLandXML myLandXML = new myLandXML(filePath, surface);
+                        tr2.Dispose();
+                    }
+                }
+            }            
+        }
+
+        [CommandMethod("ExportTINSurfaceToXML")]
+        public void ExportTINSurfaceToXML()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Editor ed = doc.Editor;
+
+            PromptEntityOptions prompt = new PromptEntityOptions("select surface");
+            prompt.SetRejectMessage("not");
+            prompt.AllowNone = false;
+            prompt.AddAllowedClass(typeof(TinSurface), true);
+
+            PromptEntityResult res = ed.GetEntity(prompt);
+
+            if (res.Status != PromptStatus.OK)
+                return;
+            ObjectId oidSurface = res.ObjectId;
+
+            prompt.Message = "Selec Polyline";
+            prompt.AddAllowedClass(typeof(Polyline), true);
+
+            res = ed.GetEntity(prompt);
+            ObjectId oidPolyline = res.ObjectId;
+
+            if (res.Status != PromptStatus.OK)
+                return;
+            using (Transaction tr = doc.TransactionManager.StartTransaction())
+            {
+                Polyline polyline = (Polyline)tr.GetObject(oidPolyline, OpenMode.ForRead);
+                Point2dCollection point2s = new Point2dCollection();
+                for (int i = 0; i < polyline.NumberOfVertices; i++)
+                {
+                    Point2d point = polyline.GetPoint2dAt(i);
+                    point2s.Add(point);
+                }
+
+                TinSurface surface = (TinSurface)tr.GetObject(oidSurface, OpenMode.ForWrite);
+                ed.WriteMessage(surface.GetTinProperties().NumberOfTriangles + "\n");
+                //fictitious crop, add boundaries outer produce only remain triangles and points
+                surface.BoundariesDefinition.AddBoundaries(point2s, 0.001, Autodesk.Civil.SurfaceBoundaryType.Outer, true);
+                ed.WriteMessage(surface.GetTinProperties().NumberOfTriangles + "\n");
+
+                //
+                string filePath = UtilDebug.IntPath + Path.DirectorySeparatorChar + surface.Name + ".xml";
+                ed.WriteMessage(filePath + "\n");
+                myLandXML myLandXML = new myLandXML(filePath, surface);
+                tr.Dispose();
+            }
         }
     }
 }

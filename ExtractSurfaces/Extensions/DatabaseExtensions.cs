@@ -25,9 +25,8 @@ namespace CivilAPI.Extensions
                 }
                 catch
                 {
-                    tr.Abort();
                     throw new NotImplementedException();
-                }
+                }         
             }
         }
 

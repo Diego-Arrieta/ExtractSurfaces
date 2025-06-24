@@ -15,6 +15,98 @@ namespace CivilAPI.Extensions
 {
     public static class EditorExtensions
     {
+        public static ObjectId PickObject(this Editor editor, string message = "Select entity: ")
+        {
+            ObjectId objectId;
+
+            PromptSelectionOptions promptSelectionOptions = new PromptSelectionOptions();
+            promptSelectionOptions.SingleOnly = true;
+            promptSelectionOptions.MessageForAdding = message;
+
+            PromptSelectionResult promptSelectionResult = editor.GetSelection(promptSelectionOptions);
+
+            if (promptSelectionResult.Status == PromptStatus.Error || promptSelectionResult.Value.Count == 0)
+            {
+                objectId = editor.PickObject(message);
+            }
+            else
+            {
+                objectId = promptSelectionResult.Value[0].ObjectId;
+            }
+            return objectId;
+        }
+        public static List<ObjectId> PickObjects(this Editor editor, string message = "Select entities: ")
+        {
+            List<ObjectId> objectIds = new List<ObjectId>();
+
+            PromptSelectionOptions promptSelectionOptions = new PromptSelectionOptions();
+            promptSelectionOptions.MessageForAdding = message;
+
+            PromptSelectionResult promptSelectionResult = editor.GetSelection(promptSelectionOptions);
+
+            if (promptSelectionResult.Status == PromptStatus.Error || promptSelectionResult.Value.Count == 0)
+            {
+                objectIds = editor.PickObjects(message);
+            }
+            else
+            {
+                foreach (SelectedObject selectedObject in promptSelectionResult.Value)
+                {
+                    objectIds.Add(selectedObject.ObjectId);
+                }
+            }
+            return objectIds;
+        }
+        public static ObjectId PickObjectOfType(this Editor editor, string dxfTypeName, string message = "Select entity: ")
+        {
+            ObjectId objectId;
+
+            TypedValue[] typedValue = new TypedValue[1];
+            typedValue.SetValue(new TypedValue((int)DxfCode.Start, dxfTypeName), 0);
+            SelectionFilter selectionFilter = new SelectionFilter(typedValue);
+
+            PromptSelectionOptions promptSelectionOptions = new PromptSelectionOptions();
+            promptSelectionOptions.SingleOnly = true;
+            promptSelectionOptions.MessageForAdding = message;
+
+            PromptSelectionResult promptSelectionResult = editor.GetSelection(promptSelectionOptions, selectionFilter);
+
+            if (promptSelectionResult.Status == PromptStatus.Error || promptSelectionResult.Value.Count == 0)
+            {
+                objectId = editor.PickObjectOfType(dxfTypeName, message);
+            }
+            else
+            {
+                objectId = promptSelectionResult.Value[0].ObjectId;
+            }
+            return objectId;
+        }
+        public static List<ObjectId> PickObjectsOfType(this Editor editor, string dxfTypeName, string message = "Select entities: ")
+        {
+            List<ObjectId> objectIds = new List<ObjectId>();
+
+            TypedValue[] typedValue = new TypedValue[1];
+            typedValue.SetValue(new TypedValue((int)DxfCode.Start, dxfTypeName), 0);
+            SelectionFilter selectionFilter = new SelectionFilter(typedValue);
+
+            PromptSelectionOptions promptSelectionOptions = new PromptSelectionOptions();
+            promptSelectionOptions.MessageForAdding = message;
+
+            PromptSelectionResult promptSelectionResult = editor.GetSelection(promptSelectionOptions, selectionFilter);
+
+            if (promptSelectionResult.Status == PromptStatus.Error || promptSelectionResult.Value.Count == 0)
+            {
+                objectIds = editor.PickObjectsOfType(dxfTypeName, message);
+            }
+            else
+            {
+                foreach (SelectedObject selectedObject in promptSelectionResult.Value)
+                {
+                    objectIds.Add(selectedObject.ObjectId);
+                }
+            }
+            return objectIds;
+        }
         public static Entity PickEntity(this Editor editor, Transaction tr, Boolean forRead, string message = "Select entity: ")
         {
             Entity entity = null;
